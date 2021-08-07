@@ -1,7 +1,6 @@
-using System;
 using Xunit;
 
-namespace GodelTech.Microservices.Auth.Tests
+namespace GodelTech.Auth.IdentityModel.Tests
 {
     public class UnitTest1
     {

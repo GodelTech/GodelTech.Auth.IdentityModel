@@ -1,3 +1,3 @@
-# GodelTech.Microservices.Auth
+# GodelTech.Auth.IdentityModel
 
-Library to work with auth for different clients
+Library to work with auth for different clients using IdentityModel

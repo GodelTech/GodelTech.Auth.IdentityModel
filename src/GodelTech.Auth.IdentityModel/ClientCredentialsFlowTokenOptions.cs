@@ -1,4 +1,4 @@
-﻿namespace GodelTech.Microservices.Auth
+﻿namespace GodelTech.Auth.IdentityModel
 {
     /// <summary>
     /// Client credentials flow token options.
