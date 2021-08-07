@@ -27,6 +27,8 @@ namespace GodelTech.Auth.IdentityModel
             IHttpClientFactory httpClientFactory,
             ILogger<ClientCredentialsFlowTokenService> logger)
         {
+            if (clientCredentialsFlowTokenOptions == null) throw new ArgumentNullException(nameof(clientCredentialsFlowTokenOptions));
+
             _clientCredentialsFlowTokenOptions = clientCredentialsFlowTokenOptions.Value;
             _httpClientFactory = httpClientFactory;
             _logger = logger;
@@ -44,30 +46,39 @@ namespace GodelTech.Auth.IdentityModel
             if (discoveryDocumentResponse.IsError)
             {
                 _logger.LogError(discoveryDocumentResponse.Error);
-                throw new Exception(discoveryDocumentResponse.Error);
+                throw new InvalidOperationException(discoveryDocumentResponse.Error);
             }
 
             _logger.LogInformation(discoveryDocumentResponse.TokenEndpoint);
-            var tokenResponse = await tokenClient.RequestClientCredentialsTokenAsync(
-                new ClientCredentialsTokenRequest
-                {
-                    Address = discoveryDocumentResponse.TokenEndpoint,
 
-                    ClientId = _clientCredentialsFlowTokenOptions.ClientId,
-                    ClientSecret = _clientCredentialsFlowTokenOptions.ClientSecret,
+            using var tokenRequest = CreateTokenRequest(discoveryDocumentResponse);
 
-                    Scope = _clientCredentialsFlowTokenOptions.Scope
-                }
-            );
+            var tokenResponse = await tokenClient
+                .RequestClientCredentialsTokenAsync(
+                    tokenRequest
+                );
 
             if (tokenResponse.IsError)
             {
                 _logger.LogError(tokenResponse.Error);
-                throw new Exception(tokenResponse.Error);
+                throw new InvalidOperationException(tokenResponse.Error);
             }
 
-            _logger.LogInformation(tokenResponse.AccessToken);
+            _logger.LogDebug(tokenResponse.AccessToken);
             return tokenResponse;
+        }
+
+        private ClientCredentialsTokenRequest CreateTokenRequest(DiscoveryDocumentResponse discoveryDocumentResponse)
+        {
+            return new ClientCredentialsTokenRequest
+            {
+                Address = discoveryDocumentResponse.TokenEndpoint,
+
+                ClientId = _clientCredentialsFlowTokenOptions.ClientId,
+                ClientSecret = _clientCredentialsFlowTokenOptions.ClientSecret,
+
+                Scope = _clientCredentialsFlowTokenOptions.Scope
+            };
         }
     }
 }
