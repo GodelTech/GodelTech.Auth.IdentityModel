@@ -46,7 +46,7 @@ namespace GodelTech.Auth.IdentityModel
             if (discoveryDocumentResponse.IsError)
             {
                 _logger.LogError(discoveryDocumentResponse.Error);
-                throw new InvalidOperationException(discoveryDocumentResponse.Error);
+                throw new HttpRequestException(discoveryDocumentResponse.Error);
             }
 
             _logger.LogInformation(discoveryDocumentResponse.TokenEndpoint);
@@ -61,7 +61,7 @@ namespace GodelTech.Auth.IdentityModel
             if (tokenResponse.IsError)
             {
                 _logger.LogError(tokenResponse.Error);
-                throw new InvalidOperationException(tokenResponse.Error);
+                throw new HttpRequestException(tokenResponse.Error);
             }
 
             _logger.LogDebug(tokenResponse.AccessToken);

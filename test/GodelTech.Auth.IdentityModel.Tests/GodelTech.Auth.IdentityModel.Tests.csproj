@@ -31,6 +31,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<None Update="Documents\*">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="..\..\src\GodelTech.Auth.IdentityModel\GodelTech.Auth.IdentityModel.csproj" />
 	</ItemGroup>
 
