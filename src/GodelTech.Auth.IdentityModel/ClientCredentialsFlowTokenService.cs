@@ -49,7 +49,7 @@ namespace GodelTech.Auth.IdentityModel
                 throw new HttpRequestException(discoveryDocumentResponse.Error);
             }
 
-            _logger.LogInformation(discoveryDocumentResponse.TokenEndpoint);
+            _logger.LogDebug(discoveryDocumentResponse.TokenEndpoint);
 
             using var tokenRequest = CreateTokenRequest(discoveryDocumentResponse);
 

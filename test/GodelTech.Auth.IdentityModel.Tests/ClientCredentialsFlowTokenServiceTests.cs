@@ -17,6 +17,8 @@ namespace GodelTech.Auth.IdentityModel.Tests
     {
         private readonly ClientCredentialsFlowTokenOptions _clientCredentialsFlowTokenOptions;
         private readonly Uri _discoveryEndpointUri;
+        private readonly Uri _jwkEndpointUri;
+        private readonly Uri _tokenEndpointUri;
         private readonly Mock<HttpMessageHandler> _mockHttpMessageHandler;
         private readonly HttpClient _httpClient;
         private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
@@ -35,6 +37,8 @@ namespace GodelTech.Auth.IdentityModel.Tests
             };
 
             _discoveryEndpointUri = new Uri($"{_clientCredentialsFlowTokenOptions.Authority}/.well-known/openid-configuration");
+            _jwkEndpointUri = new Uri($"{_clientCredentialsFlowTokenOptions.Authority}/.well-known/jwks");
+            _tokenEndpointUri = new Uri($"{_clientCredentialsFlowTokenOptions.Authority}/connect/token");
 
             var mockClientCredentialsFlowTokenOptions = new Mock<IOptions<ClientCredentialsFlowTokenOptions>>(MockBehavior.Strict);
             mockClientCredentialsFlowTokenOptions
@@ -109,7 +113,7 @@ namespace GodelTech.Auth.IdentityModel.Tests
                 )
                 .ReturnsAsync(discoveryDocumentResponse);
 
-            Expression<Action<ILogger<ClientCredentialsFlowTokenService>>> loggerExpression = x => x.Log(
+            Expression<Action<ILogger<ClientCredentialsFlowTokenService>>> loggerExpressionError = x => x.Log(
                 LogLevel.Error,
                 0,
                 It.Is<It.IsAnyType>((v, t) =>
@@ -119,7 +123,7 @@ namespace GodelTech.Auth.IdentityModel.Tests
                 null,
                 It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)
             );
-            _mockLogger.Setup(loggerExpression);
+            _mockLogger.Setup(loggerExpressionError);
 
             // Act & Assert
             var exception = await Assert.ThrowsAsync<HttpRequestException>(
@@ -130,7 +134,20 @@ namespace GodelTech.Auth.IdentityModel.Tests
                 exception.Message
             );
 
-            _mockLogger.Verify(loggerExpression, Times.Once);
+            _mockHttpMessageHandler
+                .Protected()
+                .Verify<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    Times.Once(),
+                    ItExpr.Is<HttpRequestMessage>(
+                        x =>
+                            x.Method == HttpMethod.Get
+                            && x.RequestUri == _discoveryEndpointUri
+                    ),
+                    ItExpr.IsAny<CancellationToken>()
+                );
+
+            _mockLogger.Verify(loggerExpressionError, Times.Once);
         }
 
         [Fact]
@@ -152,36 +169,133 @@ namespace GodelTech.Auth.IdentityModel.Tests
                 )
                 .ReturnsAsync(discoveryDocumentResponse);
 
-            Expression<Action<ILogger<ClientCredentialsFlowTokenService>>> loggerExpression = x => x.Log(
-                LogLevel.Error,
+            using var jwkResponse = GetJwkResponse();
+
+            _mockHttpMessageHandler
+                .Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.Is<HttpRequestMessage>(
+                        x =>
+                            x.Method == HttpMethod.Get
+                            && x.RequestUri == _jwkEndpointUri
+                    ),
+                    ItExpr.IsAny<CancellationToken>()
+                )
+                .ReturnsAsync(jwkResponse);
+
+            Expression<Action<ILogger<ClientCredentialsFlowTokenService>>> loggerExpressionTokenEndpoint = x => x.Log(
+                LogLevel.Debug,
                 0,
                 It.Is<It.IsAnyType>((v, t) =>
                     v.ToString() ==
-                    $"Error connecting to {_discoveryEndpointUri.AbsoluteUri}: Test ReasonPhrase"
+                    $"{_tokenEndpointUri.AbsoluteUri}"
                 ),
                 null,
                 It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)
             );
-            _mockLogger.Setup(loggerExpression);
+            _mockLogger.Setup(loggerExpressionTokenEndpoint);
+
+            using var tokenResponse = new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.InternalServerError,
+                ReasonPhrase = "Test ReasonPhrase"
+            };
+
+            _mockHttpMessageHandler
+                .Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.Is<HttpRequestMessage>(
+                        x =>
+                            x.Method == HttpMethod.Post
+                            && x.RequestUri == _tokenEndpointUri
+                    ),
+                    ItExpr.IsAny<CancellationToken>()
+                )
+                .ReturnsAsync(tokenResponse);
+
+            Expression<Action<ILogger<ClientCredentialsFlowTokenService>>> loggerExpressionError = x => x.Log(
+                LogLevel.Error,
+                0,
+                It.Is<It.IsAnyType>((v, t) =>
+                    v.ToString() ==
+                    "Test ReasonPhrase"
+                ),
+                null,
+                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)
+            );
+            _mockLogger.Setup(loggerExpressionError);
 
             // Act & Assert
-            await _service.RequestTokenAsync();
+            var exception = await Assert.ThrowsAsync<HttpRequestException>(
+                () => _service.RequestTokenAsync()
+            );
+            Assert.Equal(
+                "Test ReasonPhrase",
+                exception.Message
+            );
 
-            //var exception = await Assert.ThrowsAsync<HttpRequestException>(
-            //    () => _service.RequestTokenAsync()
-            //);
-            //Assert.Equal(
-            //    $"Error connecting to {_discoveryEndpointUri.AbsoluteUri}: Test ReasonPhrase",
-            //    exception.Message
-            //);
+            _mockHttpMessageHandler
+                .Protected()
+                .Verify<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    Times.Once(),
+                    ItExpr.Is<HttpRequestMessage>(
+                        x =>
+                            x.Method == HttpMethod.Get
+                            && x.RequestUri == _discoveryEndpointUri
+                    ),
+                    ItExpr.IsAny<CancellationToken>()
+                );
 
-            //_mockLogger.Verify(loggerExpression, Times.Once);
+            _mockHttpMessageHandler
+                .Protected()
+                .Verify<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    Times.Once(),
+                    ItExpr.Is<HttpRequestMessage>(
+                        x =>
+                            x.Method == HttpMethod.Get
+                            && x.RequestUri == _jwkEndpointUri
+                    ),
+                    ItExpr.IsAny<CancellationToken>()
+                );
+
+            _mockLogger.Verify(loggerExpressionTokenEndpoint, Times.Once);
+
+            _mockHttpMessageHandler
+                .Protected()
+                .Verify<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    Times.Once(),
+                    ItExpr.Is<HttpRequestMessage>(
+                        x =>
+                            x.Method == HttpMethod.Post
+                            && x.RequestUri == _tokenEndpointUri
+                    ),
+                    ItExpr.IsAny<CancellationToken>()
+                );
+
+            _mockLogger.Verify(loggerExpressionError, Times.Once);
         }
 
         // https://stackoverflow.com/questions/62130584/how-to-mock-getdiscoverydocumentasync-when-unit-testing-httpclient
         private static HttpResponseMessage GetDiscoveryResponse()
         {
             var json = File.ReadAllText("Documents\\discovery.json");
+
+            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json)
+            };
+
+            return response;
+        }
+
+        private static HttpResponseMessage GetJwkResponse()
+        {
+            var json = File.ReadAllText("Documents\\discovery_jwks.json");
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
