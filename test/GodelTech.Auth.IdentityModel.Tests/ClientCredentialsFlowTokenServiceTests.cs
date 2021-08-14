@@ -283,7 +283,7 @@ namespace GodelTech.Auth.IdentityModel.Tests
         // https://stackoverflow.com/questions/62130584/how-to-mock-getdiscoverydocumentasync-when-unit-testing-httpclient
         private static HttpResponseMessage GetDiscoveryResponse()
         {
-            var json = File.ReadAllText("Documents\\discovery.json");
+            var json = File.ReadAllText("Documents/discovery.json");
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
@@ -295,7 +295,7 @@ namespace GodelTech.Auth.IdentityModel.Tests
 
         private static HttpResponseMessage GetJwkResponse()
         {
-            var json = File.ReadAllText("Documents\\discovery_jwks.json");
+            var json = File.ReadAllText("Documents/discovery_jwks.json");
 
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
