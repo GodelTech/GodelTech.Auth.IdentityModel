@@ -1,5 +1,5 @@
 ﻿using System;
-using GodelTech.Microservices.Auth;
+using GodelTech.Auth.IdentityModel;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 

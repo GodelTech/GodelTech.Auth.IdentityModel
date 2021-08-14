@@ -1,7 +1,9 @@
-﻿using IdentityModel.Client;
+﻿using System;
+using IdentityModel.Client;
 using System.Threading.Tasks;
 
-namespace GodelTech.Microservices.Auth
+[assembly: CLSCompliant(false)]
+namespace GodelTech.Auth.IdentityModel
 {
     /// <summary>
     /// Interface of token service.
